@@ -136,23 +136,45 @@ async function fillFormUltraSmart() {
                 }
             });
         } else {
-            // Generic Mode
+            // Generic Mode - Enhanced for Industrial Forms
             const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea, select');
             inputs.forEach((input, index) => {
-                const labelText = (
+                // Hierarchical Detection
+                let contextParts = [];
+                let parent = input.parentElement;
+                let depth = 0;
+                while (parent && depth < 5) {
+                    // Look for headers, legends, or parent labels
+                    const header = parent.querySelector('h1, h2, h3, h4, h5, h6, legend, .parent-label, .card-header');
+                    if (header && !contextParts.includes(header.innerText.trim())) {
+                        contextParts.unshift(header.innerText.trim());
+                    }
+                    parent = parent.parentElement;
+                    depth++;
+                }
+
+                const shortLabel = (
                     input.getAttribute('aria-label') ||
                     input.getAttribute('placeholder') ||
                     (input.id && document.querySelector(`label[for="${input.id}"]`)?.innerText) ||
+                    input.closest('.form-group')?.querySelector('label')?.innerText ||
                     input.closest('label')?.innerText ||
                     input.getAttribute('name') ||
                     ''
-                ).toLowerCase().trim();
+                ).trim();
 
-                if (labelText) {
+                // Capture "Standard" hint (common in report forms)
+                const hintEl = input.closest('.form-group, .col-md-3, .col-md-6')?.querySelector('small, .text-muted');
+                const hintText = hintEl ? hintEl.innerText.trim() : '';
+
+                if (shortLabel) {
+                    const fullLabel = [...contextParts, shortLabel].join(' > ');
                     fields.push({
                         index: index,
-                        label: labelText,
-                        labelText: labelText,
+                        label: fullLabel,
+                        shortLabel: shortLabel.toLowerCase(),
+                        labelText: fullLabel.toLowerCase(),
+                        hint: hintText,
                         options: input.tagName === 'SELECT' ? Array.from(input.options).map(o => o.text) : [],
                         element: input
                     });
@@ -207,15 +229,16 @@ async function fillFormUltraSmart() {
 
 function findDictionaryMatch(labelText, presets) {
     const dictionary = [
-        { key: 'nama', synonyms: ['nama', 'lengkap', 'peserta', 'name', 'identitas', 'panggilan'] },
+        { key: 'nama', synonyms: ['nama', 'lengkap', 'peserta', 'name', 'identitas', 'panggilan', 'customer', 'pelanggan'] },
         { key: 'telepon', synonyms: ['telepon', 'phone', 'wa', 'whatsapp', 'kontak', 'hp', 'telp', 'aktif', 'emergency', 'darurat', 'no aktif'] },
-        { key: 'alamat', synonyms: ['alamat', 'address', 'domisili', 'ktp', 'tinggal', 'rumah'] },
+        { key: 'alamat', synonyms: ['alamat', 'address', 'domisili', 'ktp', 'tinggal', 'rumah', 'lokasi', 'location'] },
         { key: 'nik', synonyms: ['nik', 'nomer induk keluarga', 'nomer induk kependudukan', 'nomor induk keluarga', 'nomor induk kependudukan', 'id card', 'identitas diri', 'nomor induk', 'identity'] },
         { key: 'kk', synonyms: ['kk', 'kartu keluarga', 'no kk', 'nomor kartu keluarga', 'nomer kartu keluarga'] },
         { key: 'email', synonyms: ['email', 'surel', 'pos-el', 'mail'] },
         { key: 'tgl', synonyms: ['tanggal', 'lahir', 'date', 'birth'] },
         { key: 'kelamin', synonyms: ['jenis kelamin', 'gender', 'sex', 'pria', 'wanita', 'laki-laki', 'perempuan', 'lk', 'pr'] },
-        { key: 'agama', synonyms: ['agama', 'religion', 'faith'] }
+        { key: 'agama', synonyms: ['agama', 'religion', 'faith'] },
+        { key: 'status', synonyms: ['kondisi', 'keadaan', 'status', 'keterangan', 'bocor', 'fungsi', 'normal', 'good'] }
     ];
 
     const exactMatch = presets.find(p => p.label.toLowerCase().trim() === labelText);
@@ -253,20 +276,21 @@ async function runAIMapping(fields, presets) {
         if (status === 'no' || status === 'unavailable') return {};
 
         const session = await aiProvider.create({
-            systemPrompt: `You are a high-performance form filler assistant. 
-            CONTEXT:
-            - Map "Form Labels" to "User Presets" based on meaning.
-            - If a field is a SELECTION (Radio/Dropdown), map the preset value to the MOST LOGICAL option provided.
-            - Example: Label "Gender" has options ["Pria", "Wanita"]. Preset "Kelamin" is "Laki-laki". Map "Gender" to "Pria".
-            - Example: Label "Lahir" maps to preset "lahir".
-            
+            systemPrompt: `You are a professional industrial form-filling AI. 
+            SKILLS:
+            - Map "Form Labels" to "User Presets" using cross-language synonyms (Indonesian/KBBI & English).
+            - Handle Industrial Context: e.g., "Tidak Bocor" = "Normal", "Good", "Safe", "Aman".
+            - Use MULTI-LAYER labels: If you see "Regulator > Pressure Gauge", use both for context.
+            - HINT SUPPORT: If a field says "Standard: X", use X as the logical mapping for "Normal" or "Good".
+
             RULES:
-            - Return ONLY a JSON object mapping field INDEX to the FINAL mapped value (the option text if it's a selection).
+            - Return ONLY a JSON object mapping field INDEX to the FINAL mapped value.
             - Format: {"idx": "mapped_value"}`
         });
 
         const fieldsInfo = fields.map(f => {
-            let info = `${f.index}: "${f.label}"`;
+            let info = `${f.index}: Label="${f.label}"`;
+            if (f.hint) info += ` | Hint="${f.hint}"`;
             if (f.options && f.options.length > 0) info += ` | Options: [${f.options.join(', ')}]`;
             return info;
         }).join('\n');
@@ -373,11 +397,16 @@ async function fillGenericField(element, value) {
             }
         }
     } else if (element.type === 'radio' || element.type === 'checkbox') {
-        // Find if this specific element is the one to check
+        // Bootstrap Button Groups or standard choices
+        const valText = value.toLowerCase().trim();
         const parent = element.parentElement;
-        const label = (parent.innerText || '').toLowerCase().trim();
-        if (label.includes(value.toLowerCase().trim())) {
-            element.checked = true;
+        const labelText = (element.getAttribute('aria-label') || parent.innerText || '').toLowerCase().trim();
+
+        // Smart Check: Only click if it's the right choice and not already checked
+        if (labelText === valText || labelText.includes(valText) || valText.includes(labelText)) {
+            if (!element.checked) {
+                element.click();
+            }
         }
     } else {
         // Text, Date, Number, etc.

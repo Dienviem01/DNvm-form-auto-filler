@@ -23,7 +23,8 @@
     "content_scripts": [
         {
             "matches": [
-                "https://docs.google.com/forms/*"
+                "https://*/*",
+                "http://*/*"
             ],
             "js": [
                 "content.js"
