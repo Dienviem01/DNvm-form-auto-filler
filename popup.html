@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Filler Plus</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="header-main">
+        <h1><img src="icons/icon128.png" alt="Logo" class="logo-img"> DNvm Form Auto Filler</h1>
+        <div class="subtitle">AI-Powered Form Assistant</div>
+      </div>
+      <div class="theme-actions">
+        <button id="theme-toggle" class="btn-icon theme" title="Toggle Theme">🌙</button>
+        <button id="show-guide" class="btn-icon help" title="User Guide">❓</button>
+      </div>
+    </header>
+
+    <div class="control-panel">
+      <div class="control-row">
+        <span>Fill Status</span>
+        <label class="switch">
+          <input type="checkbox" id="extension-active" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="control-row">
+        <span>Mode</span>
+        <select id="fill-mode" class="select-small">
+          <option value="google">Google Forms Only</option>
+          <option value="universal">All Websites</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="profile-manager">
+      <div class="profile-select-wrapper">
+        <select id="profile-select" title="Switch Profile">
+          <!-- Profiles will be loaded here -->
+        </select>
+        <button id="delete-profile" class="btn-icon danger" title="Delete Profile">🗑️</button>
+      </div>
+      <div class="profile-actions">
+        <button id="new-profile" class="btn small">+ New Profile</button>
+      </div>
+    </div>
+
+    <div id="presets-list" class="presets-list">
+      <!-- Dynamic list of presets will go here -->
+    </div>
+
+    <div class="actions">
+      <button id="add-field" class="btn secondary">
+        <span class="icon">+</span> Add New Field
+      </button>
+    </div>
+
+    <div class="status-bar" id="status-bar">
+      All changes are automatically saved
+    </div>
+
+    <footer class="footer-watermark">
+      Build with ❤️ by mubisa.srt &copy; 2026
+    </footer>
+
+    <!-- Help Guide Modal -->
+    <div id="guide-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><span class="icon">📖</span> Panduan Pengguna</h2>
+          <button id="close-guide" class="btn-icon close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="guide-step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <h3>Aktifkan AI Nano</h3>
+              <p>Buka <b>chrome://flags</b>. Aktifkan:
+                <br>• <b>Prompt API for Gemini Nano</b>
+                <br>• <b>Enables optimization guide on device</b>
+              </p>
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <h3>Kelola Profil</h3>
+              <p>Klik tombol <b>+ New Profile</b> untuk membuat kategori data (misal: Data Pribadi atau Kantor).</p>
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <h3>Dukungan Tipe Data</h3>
+              <p>Ekstensi otomatis mengisi:</p>
+              <ul class="guide-list">
+                <li>🔘 <b>Opsi/Pilihan</b>: Ketik teks yang sama dengan pilihan di form.</li>
+                <li>📅 <b>Tanggal</b>: Gunakan format YYYY-MM-DD atau bahasa manusia.</li>
+                <li>✅ <b>Multi-pilih</b>: Gunakan koma untuk memilih banyak (Contoh: "Hobi 1, Hobi 2").</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="guide-step highlight">
+            <div class="step-num">✨</div>
+            <div class="step-text">
+              <h3>Smart Auto-Mapping</h3>
+              <p>Cukup simpan data dengan label <b>"Nama"</b>, AI akan otomatis mengisi field yang berjudul <b>"Nama
+                  Lengkap"</b> atau <b>"Full Name"</b>.</p>
+            </div>
+          </div>
+
+          <div class="guide-step">
+            <div class="step-num">4</div>
+            <div class="step-text">
+              <h3>Langsung Terisi</h3>
+              <p>Buka formulir online mana saja, biarkan ekstensi mengisi data seketika!</p>
+            </div>
+          </div>
+
+          <div class="guide-note">
+            <p><b>Tips:</b> Gunakan Mode <b>"Universal Site"</b> pada setting jika mengisi formulir di luar Google
+              Forms.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template for a preset row -->
+  <template id="preset-template">
+    <div class="preset-row">
+      <div class="input-container">
+        <input type="text" class="preset-label" placeholder="Field (e.g. Nama)">
+        <input type="text" class="preset-value" placeholder="Value to fill">
+      </div>
+      <button class="remove-field" title="Remove field">×</button>
+    </div>
+  </template>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
