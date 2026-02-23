@@ -14,6 +14,14 @@ build with AI
 - **⚡ Live Auto-Fill**: Forms are filled immediately upon loading or when you switch profiles.
 - **🌐 Universal Mode**: Works on Google Forms and virtually any other website with standard input fields.
 - **🎨 Modern UI**: "Classic Casual" design with smooth animations and a responsive, rounded interface.
+- **🛡️ Weighted Logic**: Smart dictionary matching that prioritizes primary keywords (e.g., "Address") over secondary modifiers (e.g., "Complete"), preventing incorrect auto-fills.
+
+## 🚀 Recent Updates (2026-02-23)
+
+- **Semantic Weighted Matching**: Introduced a dual-pass logic to distinguish between similar labels (e.g., "Nama Lengkap" vs "Alamat Lengkap"). Primary keywords now take precedence.
+- **Advanced Computational Linguist AI**: Refactored the AI prompt to act as an expert linguist, improving its understanding of industrial context, synonyms (KBBI & English), and abbreviations.
+- **Structured Data Mapping**: Revamped the data communication between the script and AI. Presets are now sent as clean JSON objects, ensuring 100% reliable index-to-value mapping.
+- **Safety First Filtering**: Added a negative filtering layer to prevent wrong data entries in ambiguous fields.
 
 ## 🛠️ Installation
 

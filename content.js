@@ -214,7 +214,9 @@ async function fillFormUltraSmart() {
 
         // Filling
         for (const [index, value] of mapping) {
-            const field = fields[index];
+            const field = fields.find(f => f.index === index);
+            if (!field) continue;
+
             if (isGoogleForm) {
                 await fillField(field.container, value);
             } else {
@@ -229,30 +231,40 @@ async function fillFormUltraSmart() {
 
 function findDictionaryMatch(labelText, presets) {
     const dictionary = [
-        { key: 'nama', synonyms: ['nama', 'lengkap', 'peserta', 'name', 'identitas', 'panggilan', 'customer', 'pelanggan'] },
-        { key: 'telepon', synonyms: ['telepon', 'phone', 'wa', 'whatsapp', 'kontak', 'hp', 'telp', 'aktif', 'emergency', 'darurat', 'no aktif'] },
-        { key: 'alamat', synonyms: ['alamat', 'address', 'domisili', 'ktp', 'tinggal', 'rumah', 'lokasi', 'location'] },
-        { key: 'nik', synonyms: ['nik', 'nomer induk keluarga', 'nomer induk kependudukan', 'nomor induk keluarga', 'nomor induk kependudukan', 'id card', 'identitas diri', 'nomor induk', 'identity'] },
-        { key: 'kk', synonyms: ['kk', 'kartu keluarga', 'no kk', 'nomor kartu keluarga', 'nomer kartu keluarga'] },
-        { key: 'email', synonyms: ['email', 'surel', 'pos-el', 'mail'] },
-        { key: 'tgl', synonyms: ['tanggal', 'lahir', 'date', 'birth'] },
-        { key: 'kelamin', synonyms: ['jenis kelamin', 'gender', 'sex', 'pria', 'wanita', 'laki-laki', 'perempuan', 'lk', 'pr'] },
-        { key: 'agama', synonyms: ['agama', 'religion', 'faith'] },
-        { key: 'status', synonyms: ['kondisi', 'keadaan', 'status', 'keterangan', 'bocor', 'fungsi', 'normal', 'good'] }
+        { key: 'nama', primary: ['nama', 'name', 'identitas', 'panggilan', 'customer', 'pelanggan'], secondary: ['lengkap', 'peserta'] },
+        { key: 'telepon', primary: ['telepon', 'phone', 'wa', 'whatsapp', 'kontak', 'hp', 'telp', 'aktif', 'no aktif'], secondary: [] },
+        { key: 'alamat', primary: ['alamat', 'address', 'ktp', 'tinggal', 'rumah', 'lokasi', 'location'], secondary: [] },
+        { key: 'nik', primary: ['nik', 'nomer induk keluarga', 'nomer induk kependudukan', 'nomor induk keluarga', 'nomor induk kependudukan', 'id card', 'identitas diri', 'nomor induk', 'identity'], secondary: [] },
+        { key: 'kk', primary: ['kk', 'kartu keluarga', 'no kk', 'nomor kartu keluarga', 'nomer kartu keluarga'], secondary: [] },
+        { key: 'email', primary: ['email', 'surel', 'pos-el', 'mail'], secondary: [] },
+        { key: 'tgl', primary: ['tanggal', 'lahir', 'date', 'birth'], secondary: [] },
+        { key: 'kelamin', primary: ['jenis kelamin', 'gender', 'sex', 'pria', 'wanita', 'laki-laki', 'perempuan', 'lk', 'pr'], secondary: [] },
+        { key: 'agama', primary: ['agama', 'religion', 'faith'], secondary: [] },
+        { key: 'status', primary: ['kondisi', 'keadaan', 'status', 'keterangan', 'bocor', 'fungsi', 'normal', 'good'], secondary: [] }
     ];
 
     const exactMatch = presets.find(p => p.label.toLowerCase().trim() === labelText);
     if (exactMatch) return exactMatch;
 
-    const labelCategory = dictionary.find(d =>
-        labelText === d.key || d.synonyms.some(s => labelText.includes(s))
+    // Layer 1: Primary Match (High signal)
+    let labelCategory = dictionary.find(d =>
+        d.primary.some(p => labelText.includes(p))
     );
+
+    // Layer 2: Secondary Match (Modifiers like "lengkap")
+    if (!labelCategory) {
+        labelCategory = dictionary.find(d =>
+            d.secondary.some(s => labelText.includes(s))
+        );
+    }
 
     if (!labelCategory) return null;
 
     return presets.find(p => {
         const pLabel = p.label.toLowerCase().trim();
-        return pLabel === labelCategory.key || labelCategory.synonyms.some(s => pLabel.includes(s));
+        return pLabel === labelCategory.key ||
+            labelCategory.primary.some(s => pLabel.includes(s)) ||
+            labelCategory.secondary.some(s => pLabel.includes(s));
     });
 }
 
@@ -271,31 +283,40 @@ async function runAIMapping(fields, presets) {
         const aiProvider = window.ai?.languageModel || window.ai?.assistant;
         if (!aiProvider) return {};
 
-        const caps = await aiProvider.capabilities();
-        const status = caps.available || caps;
-        if (status === 'no' || status === 'unavailable') return {};
-
         const session = await aiProvider.create({
-            systemPrompt: `You are a professional industrial form-filling AI. 
-            SKILLS:
-            - Map "Form Labels" to "User Presets" using cross-language synonyms (Indonesian/KBBI & English).
-            - Handle Industrial Context: e.g., "Tidak Bocor" = "Normal", "Good", "Safe", "Aman".
-            - Use MULTI-LAYER labels: If you see "Regulator > Pressure Gauge", use both for context.
-            - HINT SUPPORT: If a field says "Standard: X", use X as the logical mapping for "Normal" or "Good".
+            systemPrompt: `You are an expert Computational Linguist and Industrial Data Analyst specializing in Semantic Form Mapping.
 
-            RULES:
-            - Return ONLY a JSON object mapping field INDEX to the FINAL mapped value.
-            - Format: {"idx": "mapped_value"}`
+            CORE SKILLS:
+            - SEMANTIC MAPPING: Map "Form Labels" to "User Presets" by understanding intent, not just keywords. (e.g., "Contact" could mean "Phone Number" or "Email" based on context).
+            - LINGUISTIC DEXTERITY: Expert in Indonesian (KBBI, Slang, Abbreviations like 'No. HP', 'WA', 'Telp') and English.
+            - INDUSTRIAL CONTEXT: Understands safety checks. Example: "Kondisi Valve" with hint "Safe" should map to user's "Normal" or "Baik" preset.
+            - NEGATIVE FILTERING: Explicitly distinguish between similar-looking fields. "No. Rekening", "No. KTP", and "No. HP" are DIFFERENT entities.
+
+            MAPPING RULES:
+            1. If a label is ambiguous (e.g., "No."), look at the surrounding labels or placeholder text for context.
+            2. If no exact match exists in "User Presets", use the "HINT SUPPORT" or "Standard" value provided in the form.
+            3. Hierarchy Matters: Use parent labels (e.g., [Section: Engine] > [Label: Oil Level]) to refine mapping.
+            4. Safety First: If unsure, do not map the field rather than providing wrong data.
+
+            OUTPUT FORMAT:
+            - Return ONLY a strictly valid JSON object.
+            - No prose, no explanations.
+            - Format: {"index": "value"}`
         });
 
-        const fieldsInfo = fields.map(f => {
-            let info = `${f.index}: Label="${f.label}"`;
-            if (f.hint) info += ` | Hint="${f.hint}"`;
-            if (f.options && f.options.length > 0) info += ` | Options: [${f.options.join(', ')}]`;
-            return info;
-        }).join('\n');
+        const userPresetsObj = {};
+        presets.forEach(p => {
+            userPresetsObj[p.label.toLowerCase()] = p.value;
+        });
 
-        const prompt = `Form Fields:\n${fieldsInfo}\n\nUser Presets:\n${presets.map(p => `"${p.label}": "${p.value}"`).join('\n')}\n\nTask: Map field index to value. Return JSON:`;
+        const formLabels = fields.map(f => ({
+            index: f.index,
+            label: f.label,
+            hint: f.hint || '',
+            options: f.options || []
+        }));
+
+        const prompt = `User Presets: ${JSON.stringify(userPresetsObj)}\n\nForm Labels: ${JSON.stringify(formLabels)}\n\nTask: Map field index to value. Return JSON:`;
 
         const response = await session.prompt(prompt);
         session.destroy();
