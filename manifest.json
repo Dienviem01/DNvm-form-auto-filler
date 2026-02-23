@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "DNvm Form Auto Filler",
-    "version": "1.0",
+    "version": "1.1.0",
     "description": "Auto fill Google Forms with dynamic presets and fuzzy matching logic.",
     "permissions": [
         "storage",
